@@ -23,6 +23,9 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.UserHandle;
+import android.os.storage.StorageManager;
+import android.os.storage.StorageVolume;
 import android.util.Log;
 
 import java.io.File;
@@ -60,11 +63,23 @@ public class MediaScannerReceiver extends BroadcastReceiver {
                     // scan whenever any volume is mounted
                     scan(context, MediaProvider.EXTERNAL_VOLUME);
                 } else if (Intent.ACTION_MEDIA_SCANNER_SCAN_FILE.equals(action) &&
-                        path != null && path.startsWith(externalStoragePath + "/")) {
+                        path != null && isExternalStoragePath(path)) {
                     scanFile(context, path);
                 }
             }
         }
+    }
+
+    private static boolean isExternalStoragePath(String path) {
+        // See Environment.UserEnvironment.getExternalDirs
+        final StorageVolume[] volumes = StorageManager.getVolumeList(UserHandle.myUserId(),
+                StorageManager.FLAG_FOR_WRITE);
+        for (int i = 0; i < volumes.length; i++) {
+            if (path.startsWith(volumes[i].getPath() + "/")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void scan(Context context, String volume) {
@@ -72,12 +87,12 @@ public class MediaScannerReceiver extends BroadcastReceiver {
         args.putString("volume", volume);
         context.startService(
                 new Intent(context, MediaScannerService.class).putExtras(args));
-    }    
+    }
 
     private void scanFile(Context context, String path) {
         Bundle args = new Bundle();
         args.putString("filepath", path);
         context.startService(
                 new Intent(context, MediaScannerService.class).putExtras(args));
-    }    
+    }
 }
